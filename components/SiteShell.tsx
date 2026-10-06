@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BOARDS } from "@/lib/boards";
+import Avatar from "@/components/Avatar";
 import { logout, useUser } from "@/lib/store";
 
 export default function SiteShell({ children }: { children: React.ReactNode }) {
@@ -26,6 +27,9 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2 text-sm">
             {user ? (
               <>
+                <Link href="/profile" aria-label="개인정보" title="개인정보" className="shrink-0">
+                  <Avatar user={user} size={32} />
+                </Link>
                 <span className="opacity-70">
                   {user.admin && "👑 "}
                   {user.name}님

@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 
 export type Post = {
@@ -12,7 +13,14 @@ export type Post = {
   createdAt: number;
 };
 
-export type User = { id: string; name: string; admin: boolean } | null;
+export type User = {
+  id: string;
+  name: string;
+  admin: boolean;
+  email?: string;
+  avatar?: string;
+  provider?: string;
+} | null;
 
 // ---------- 공통: 구독 가능한 작은 스토어 ----------
 function createStore<T>(initial: T) {
@@ -105,16 +113,27 @@ type AuthState = { loading: boolean; user: User };
 const authStore = createStore<AuthState>({ loading: true, user: null });
 let authStarted = false;
 
-async function loadUser(session: { user: { id: string } } | null) {
+async function loadUser(session: Session | null) {
   if (!session) return authStore.set({ loading: false, user: null });
   const { data } = await supabase
     .from("profiles")
     .select("nickname, role")
     .eq("id", session.user.id)
     .single();
+  const meta = session.user.user_metadata ?? {};
   authStore.set({
     loading: false,
-    user: data ? { id: session.user.id, name: data.nickname, admin: data.role === "admin" } : null,
+    user: data
+      ? {
+          id: session.user.id,
+          name: data.nickname,
+          admin: data.role === "admin",
+          email: session.user.email,
+          // 카카오는 http:// 주소를 주는데, https 사이트에서는 차단되므로 https로 올림
+          avatar: (meta.avatar_url ?? meta.picture)?.replace(/^http:\/\//, "https://"),
+          provider: session.user.app_metadata?.provider,
+        }
+      : null,
   });
 }
 
@@ -127,12 +146,12 @@ function startAuth() {
   });
 }
 
+const SERVER_AUTH: AuthState = { loading: true, user: null };
+
 function useAuthState() {
   useEffect(startAuth, []);
-  return useSyncExternalStore(authStore.subscribe, authStore.get, () => ({
-    loading: true,
-    user: null,
-  }));
+  // getServerSnapshot은 매번 같은 객체를 돌려줘야 무한 루프 경고가 나지 않음
+  return useSyncExternalStore(authStore.subscribe, authStore.get, () => SERVER_AUTH);
 }
 
 export const useUser = (): User => useAuthState().user;
