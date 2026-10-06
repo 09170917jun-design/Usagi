@@ -8,8 +8,17 @@ export type Post = {
   title: string;
   content: string;
   author: string;
+  authorId: string;
   image?: string;
   views: number;
+  createdAt: number;
+};
+
+export type Comment = {
+  id: string;
+  author: string;
+  authorId: string;
+  content: string;
   createdAt: number;
 };
 
@@ -49,6 +58,7 @@ type PostRow = {
   title: string;
   content: string;
   image: string | null;
+  author_id: string;
   views: number;
   created_at: string;
   profiles: { nickname: string } | null;
@@ -57,7 +67,7 @@ type PostRow = {
 export async function refreshPosts() {
   const { data, error } = await supabase
     .from("posts")
-    .select("id, board, title, content, image, views, created_at, profiles(nickname)")
+    .select("id, board, title, content, image, author_id, views, created_at, profiles(nickname)")
     .order("created_at", { ascending: false })
     .limit(500)
     .returns<PostRow[]>();
@@ -69,6 +79,7 @@ export async function refreshPosts() {
       title: r.title,
       content: r.content,
       author: r.profiles?.nickname ?? "알 수 없음",
+      authorId: r.author_id,
       image: r.image ?? undefined,
       views: r.views,
       createdAt: Date.parse(r.created_at),
@@ -103,6 +114,58 @@ export async function addPost(
   return null;
 }
 
+/** 본인 글 삭제 (DB 정책도 작성자만 허용). 성공 시 null, 실패 시 오류 메시지 */
+export async function deletePost(post: Post): Promise<string | null> {
+  // .select()로 실제 삭제된 행이 있는지 확인 (권한이 없으면 오류 없이 0건 삭제됨)
+  const { data, error } = await supabase.from("posts").delete().eq("id", post.id).select("id");
+  if (error) return error.message;
+  if (!data?.length) return "삭제 권한이 없거나 이미 삭제된 글입니다.";
+  // 갤러리 이미지도 정리 (실패해도 글 삭제에는 영향 없음)
+  const marker = "/gallery/";
+  if (post.image?.includes(marker)) {
+    await supabase.storage.from("gallery").remove([decodeURIComponent(post.image.split(marker)[1])]);
+  }
+  postStore.set(postStore.get().filter((p) => p.id !== post.id));
+  return null;
+}
+
+// ---------- 댓글 ----------
+type CommentRow = {
+  id: string;
+  content: string;
+  author_id: string;
+  created_at: string;
+  profiles: { nickname: string } | null;
+};
+
+export async function fetchComments(postId: string): Promise<Comment[]> {
+  const { data } = await supabase
+    .from("comments")
+    .select("id, content, author_id, created_at, profiles(nickname)")
+    .eq("post_id", postId)
+    .order("created_at", { ascending: true })
+    .returns<CommentRow[]>();
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    author: r.profiles?.nickname ?? "알 수 없음",
+    authorId: r.author_id,
+    content: r.content,
+    createdAt: Date.parse(r.created_at),
+  }));
+}
+
+/** 성공 시 null, 실패 시 오류 메시지 */
+export async function addComment(postId: string, content: string): Promise<string | null> {
+  const { error } = await supabase.from("comments").insert({ post_id: postId, content });
+  return error ? error.message : null;
+}
+
+export async function deleteComment(id: string): Promise<string | null> {
+  const { data, error } = await supabase.from("comments").delete().eq("id", id).select("id");
+  if (error) return error.message;
+  return data?.length ? null : "삭제 권한이 없거나 이미 삭제된 댓글입니다.";
+}
+
 export async function viewPost(id: string) {
   await supabase.rpc("increment_views", { post_id: id });
   postStore.set(postStore.get().map((p) => (p.id === id ? { ...p, views: p.views + 1 } : p)));
@@ -117,7 +180,7 @@ async function loadUser(session: Session | null) {
   if (!session) return authStore.set({ loading: false, user: null });
   const { data } = await supabase
     .from("profiles")
-    .select("nickname, role")
+    .select("nickname, role, avatar_url")
     .eq("id", session.user.id)
     .single();
   const meta = session.user.user_metadata ?? {};
@@ -129,8 +192,9 @@ async function loadUser(session: Session | null) {
           name: data.nickname,
           admin: data.role === "admin",
           email: session.user.email,
-          // 카카오는 http:// 주소를 주는데, https 사이트에서는 차단되므로 https로 올림
-          avatar: (meta.avatar_url ?? meta.picture)?.replace(/^http:\/\//, "https://"),
+          // 직접 올린 사진이 우선, 없으면 카카오 사진. 카카오는 http:// 주소를 주는데
+          // https 사이트에서는 차단되므로 https로 올림
+          avatar: (data.avatar_url ?? meta.avatar_url ?? meta.picture)?.replace(/^http:\/\//, "https://"),
           provider: session.user.app_metadata?.provider,
         }
       : null,
@@ -173,6 +237,50 @@ export async function loginWithKakao(): Promise<string | null> {
 
 export async function logout() {
   await supabase.auth.signOut();
+}
+
+async function reloadUser() {
+  const { data } = await supabase.auth.getSession();
+  await loadUser(data.session);
+}
+
+/** 성공 시 null, 실패 시 오류 메시지 */
+export async function updateNickname(userId: string, nickname: string): Promise<string | null> {
+  const { error } = await supabase.from("profiles").update({ nickname }).eq("id", userId);
+  if (error) return error.code === "23505" ? "이미 사용 중인 닉네임입니다." : error.message;
+  await reloadUser();
+  void refreshPosts();
+  return null;
+}
+
+/** 새 사진을 올리고 프로필에 반영. 성공 시 null, 실패 시 오류 메시지 */
+export async function updateAvatar(userId: string, file: File, prevUrl?: string): Promise<string | null> {
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+  const up = await supabase.storage.from("avatars").upload(path, file);
+  if (up.error) return `이미지 업로드 실패: ${up.error.message}`;
+  const url = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+  const { error } = await supabase.from("profiles").update({ avatar_url: url }).eq("id", userId);
+  if (error) return error.message;
+  // 이전에 올렸던 사진은 정리 (실패해도 무시)
+  const marker = "/avatars/";
+  if (prevUrl?.includes(marker)) {
+    await supabase.storage.from("avatars").remove([decodeURIComponent(prevUrl.split(marker)[1])]);
+  }
+  await reloadUser();
+  return null;
+}
+
+/** 직접 올린 사진을 지우고 기본(카카오) 사진으로 되돌림 */
+export async function resetAvatar(userId: string, prevUrl?: string): Promise<string | null> {
+  const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", userId);
+  if (error) return error.message;
+  const marker = "/avatars/";
+  if (prevUrl?.includes(marker)) {
+    await supabase.storage.from("avatars").remove([decodeURIComponent(prevUrl.split(marker)[1])]);
+  }
+  await reloadUser();
+  return null;
 }
 
 export async function nicknameAvailable(nickname: string): Promise<boolean> {
