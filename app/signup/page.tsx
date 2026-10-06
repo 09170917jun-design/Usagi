@@ -2,26 +2,32 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ADMIN } from "@/lib/boards";
-import { findAccount, login, nicknameTaken, signup } from "@/lib/store";
+import { nicknameAvailable, signup } from "@/lib/store";
+import { supabaseConfigured } from "@/lib/supabase";
 
 export default function SignupPage() {
   const router = useRouter();
-  const [id, setId] = useState("");
+  const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [nickname, setNickname] = useState("");
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const name = id.trim();
+    if (!supabaseConfigured) return alert("Supabase 환경변수(.env.local)가 설정되지 않았습니다.");
+    const mail = email.trim();
     const nick = nickname.trim();
-    if (!name || !pw || !nick) return;
-    if (name === ADMIN.id || findAccount(name)) return alert("이미 사용 중인 아이디입니다.");
+    if (!mail || !pw || !nick) return;
+    if (pw.length < 6) return alert("비밀번호는 6자 이상이어야 합니다.");
     if (pw !== pw2) return alert("비밀번호가 일치하지 않습니다.");
-    if (nicknameTaken(nick)) return alert("이미 사용 중인 닉네임입니다.");
-    if (!signup(name, pw, nick)) return alert("회원가입에 실패했습니다.");
-    login({ name: nick, admin: false });
+    if (!(await nicknameAvailable(nick))) return alert("이미 사용 중인 닉네임입니다.");
+    const result = await signup(mail, pw, nick);
+    if ("error" in result) return alert(`회원가입에 실패했습니다.
+${result.error}`);
+    if (result.status === "confirm") {
+      alert("가입 확인 메일을 보냈습니다. 메일의 링크를 누른 뒤 로그인해 주세요.");
+      return router.push("/login");
+    }
     router.push("/");
   };
 
@@ -34,7 +40,7 @@ export default function SignupPage() {
       className="mx-auto max-w-sm space-y-3 rounded-3xl bg-white p-6 shadow-sm dark:bg-white/5"
     >
       <h1 className="font-logo text-2xl text-orange-500">회원가입</h1>
-      <input value={id} onChange={(e) => setId(e.target.value)} placeholder="아이디" className={field} />
+      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="이메일" className={field} />
       <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="비밀번호" className={field} />
       <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="비밀번호 확인" className={field} />
       <input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="닉네임" maxLength={12} className={field} />

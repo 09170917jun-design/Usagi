@@ -40,7 +40,7 @@ export default function BoardView({ slug }: { slug: string }) {
   };
 
   const toggle = (id: string) => {
-    if (openId !== id) viewPost(allPosts, id);
+    if (openId !== id) void viewPost(id);
     setOpenId(openId === id ? null : id);
   };
 

@@ -18,5 +18,3 @@ export const BOARDS: Board[] = [
 
 export const getBoard = (slug: string) => BOARDS.find((b) => b.slug === slug);
 
-// 데모용 관리자 계정 (클라이언트에만 존재하는 임시 인증)
-export const ADMIN = { id: "admin", pw: "admin1234" };

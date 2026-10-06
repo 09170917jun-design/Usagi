@@ -3,38 +3,26 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ADMIN } from "@/lib/boards";
-import { findAccount, login } from "@/lib/store";
+import { supabaseConfigured } from "@/lib/supabase";
+import { login } from "@/lib/store";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [id, setId] = useState("");
+  const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
 
   const done = () => router.push("/");
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const name = id.trim();
-    if (!name || !pw) return;
-    if (name === ADMIN.id) {
-      if (pw !== ADMIN.pw) return alert("아이디 또는 비밀번호가 올바르지 않습니다.");
-      login({ name: "관리자", admin: true });
-      return done();
-    }
-    const account = findAccount(name);
-    if (!account || account.pw !== pw) {
-      return alert("아이디 또는 비밀번호가 올바르지 않습니다.");
-    }
-    login({ name: account.nickname ?? name, admin: false });
+    if (!supabaseConfigured) return alert("Supabase 환경변수(.env.local)가 설정되지 않았습니다.");
+    if (!email.trim() || !pw) return;
+    const error = await login(email.trim(), pw);
+    if (error) return alert(error);
     done();
   };
 
-  // 데모용: 실제 OAuth 연동 전까지 소셜 계정 이름으로 로그인 처리
-  const socialLogin = (name: string) => {
-    login({ name, admin: false });
-    done();
-  };
+  const comingSoon = () => alert("소셜 로그인은 준비 중입니다.");
 
   const field =
     "w-full rounded-2xl border border-orange-200 bg-white px-4 py-2 text-sm outline-none focus:border-orange-400 dark:border-white/20 dark:bg-black/20";
@@ -44,7 +32,7 @@ export default function LoginPage() {
     <div className="mx-auto max-w-sm space-y-3 rounded-3xl bg-white p-6 shadow-sm dark:bg-white/5">
       <h1 className="font-logo text-2xl text-orange-500">로그인</h1>
       <form onSubmit={onSubmit} className="space-y-3">
-        <input value={id} onChange={(e) => setId(e.target.value)} placeholder="아이디" className={field} />
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="이메일" className={field} />
         <input
           type="password"
           value={pw}
@@ -66,7 +54,7 @@ export default function LoginPage() {
 
       <button
         type="button"
-        onClick={() => socialLogin("카카오 사용자")}
+        onClick={comingSoon}
         className={`${btn} bg-[#FEE500] text-[#191919] hover:brightness-95`}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
@@ -80,7 +68,7 @@ export default function LoginPage() {
 
       <button
         type="button"
-        onClick={() => socialLogin("구글 사용자")}
+        onClick={comingSoon}
         className={`${btn} border border-[#dadce0] bg-white text-[#3c4043] hover:bg-[#f8f9fa]`}
       >
         <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>

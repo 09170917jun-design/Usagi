@@ -3,19 +3,22 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { getBoard } from "@/lib/boards";
-import { addPost, usePosts, useUser } from "@/lib/store";
+import { addPost, useAuthLoading, useUser } from "@/lib/store";
 
-const MAX_IMAGE = 700 * 1024; // localStorage 용량 보호
+const MAX_IMAGE = 5 * 1024 * 1024;
 
 export default function WriteForm({ slug }: { slug: string }) {
   const board = getBoard(slug)!;
   const router = useRouter();
   const user = useUser();
-  const posts = usePosts();
+  const loading = useAuthLoading();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [image, setImage] = useState<string>();
+  const [file, setFile] = useState<File>();
+  const [preview, setPreview] = useState<string>();
+  const [busy, setBusy] = useState(false);
 
+  if (loading) return null;
   if (!user || (board.adminOnly && !user.admin)) {
     return (
       <section className="rounded-3xl bg-white p-10 text-center text-sm shadow-sm dark:bg-white/5">
@@ -24,34 +27,27 @@ export default function WriteForm({ slug }: { slug: string }) {
     );
   }
 
-  const onFile = (file?: File) => {
-    if (!file) return;
-    if (file.size > MAX_IMAGE) {
-      alert("이미지는 700KB 이하만 올릴 수 있어요.");
+  const onFile = (f?: File) => {
+    if (f && f.size > MAX_IMAGE) {
+      alert("이미지는 5MB 이하만 올릴 수 있어요.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => setImage(reader.result as string);
-    reader.readAsDataURL(file);
+    if (preview) URL.revokeObjectURL(preview);
+    setFile(f);
+    setPreview(f ? URL.createObjectURL(f) : undefined);
   };
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
-    const ok = addPost(posts, {
-      id: crypto.randomUUID(),
-      board: slug,
-      title: title.trim(),
-      content: content.trim(),
-      author: user.name,
-      image,
-      views: 0,
-      createdAt: Date.now(),
-    });
-    if (!ok) {
-      alert("저장 공간이 부족해 글을 저장하지 못했어요.");
-      return;
-    }
+    if (!title.trim() || !content.trim() || busy) return;
+    setBusy(true);
+    const error = await addPost(
+      { board: slug, title: title.trim(), content: content.trim() },
+      file,
+      user.id,
+    );
+    setBusy(false);
+    if (error) return alert(`글을 저장하지 못했어요.\n${error}`);
     router.push(`/board/${slug}`);
   };
 
@@ -74,9 +70,9 @@ export default function WriteForm({ slug }: { slug: string }) {
       {board.gallery && (
         <div className="space-y-2 text-sm">
           <input type="file" accept="image/*" onChange={(e) => onFile(e.target.files?.[0])} />
-          {image && (
+          {preview && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt="미리보기" className="max-h-48 rounded-2xl" />
+            <img src={preview} alt="미리보기" className="max-h-48 rounded-2xl" />
           )}
         </div>
       )}
@@ -88,8 +84,12 @@ export default function WriteForm({ slug }: { slug: string }) {
         >
           취소
         </button>
-        <button type="submit" className="rounded-full bg-orange-400 px-5 py-2 text-white hover:bg-orange-500">
-          등록
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-full bg-orange-400 px-5 py-2 text-white hover:bg-orange-500 disabled:opacity-50"
+        >
+          {busy ? "등록 중…" : "등록"}
         </button>
       </div>
     </form>
