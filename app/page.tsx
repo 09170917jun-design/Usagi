@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { BOARDS } from "@/lib/boards";
-import { usePosts } from "@/lib/store";
+import { popularScore, usePosts } from "@/lib/store";
 
 export default function Home() {
   const posts = usePosts();
   const latest = posts.slice(0, 6);
-  const popular = [...posts].sort((a, b) => b.views - a.views).slice(0, 5);
+  const popular = [...posts]
+    .sort((a, b) => popularScore(b) - popularScore(a) || b.createdAt - a.createdAt)
+    .slice(0, 5);
   const boardName = (slug: string) => BOARDS.find((b) => b.slug === slug)?.name ?? "";
 
   return (
@@ -23,7 +25,7 @@ export default function Home() {
                 <span className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-600 dark:bg-orange-900/50 dark:text-orange-200">
                   {boardName(p.board)}
                 </span>
-                <Link href={`/board/${p.board}`} className="flex-1 truncate hover:underline">
+                <Link href={`/board/${p.board}/${p.id}`} className="flex-1 truncate hover:underline">
                   {p.title}
                 </Link>
                 <span className="hidden opacity-60 sm:inline">{p.author}</span>
@@ -42,7 +44,7 @@ export default function Home() {
             {popular.map((p, i) => (
               <li key={p.id} className="flex gap-2">
                 <span className="w-4 font-bold text-orange-500">{i + 1}</span>
-                <Link href={`/board/${p.board}`} className="truncate hover:underline">
+                <Link href={`/board/${p.board}/${p.id}`} className="truncate hover:underline">
                   {p.title}
                 </Link>
               </li>
