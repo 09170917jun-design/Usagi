@@ -86,14 +86,14 @@ export default function BoardView({ slug }: { slug: string }) {
                     🐾
                   </div>
                 )}
-                <div className="p-3 text-sm">
+                <div className={`p-3 text-sm ${user?.id === p.authorId ? "pr-16" : ""}`}>
                   <p className="truncate font-bold">{p.title}</p>
                   <p className="text-xs opacity-60">
                     {p.author} · 조회 {p.views}
                   </p>
                 </div>
               </Link>
-              {deleteBtn(p, "absolute right-2 top-2 bg-white/90 dark:bg-black/60")}
+              {deleteBtn(p, "absolute bottom-3 right-3")}
             </li>
           ))}
         </ul>
@@ -111,7 +111,8 @@ export default function BoardView({ slug }: { slug: string }) {
                   <span className="opacity-40">{fmt(p.createdAt)}</span>
                   <span className="w-12 text-right opacity-40">{p.views}</span>
                 </Link>
-                {deleteBtn(p, "")}
+                {/* 본인 글이 아닌 줄도 같은 폭을 비워 둬서 열이 어긋나지 않게 함 */}
+                <div className="flex w-12 shrink-0 justify-end">{deleteBtn(p, "")}</div>
               </div>
             </li>
           ))}

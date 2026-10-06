@@ -52,21 +52,21 @@ export default function PostDetail({ slug, id }: { slug: string; id: string }) {
       <p className="text-xs text-orange-500">
         {board.icon} {board.name}
       </p>
-      <div className="mt-1 flex items-start gap-3">
-        <h1 className="flex-1 break-words font-logo text-2xl">{post.title}</h1>
+      <h1 className="mt-1 break-words font-logo text-2xl">{post.title}</h1>
+      <div className="mt-1 flex items-center justify-between gap-3 border-b border-orange-100 pb-3 dark:border-white/10">
+        <p className="text-xs opacity-60">
+          {post.author} · {fmt(post.createdAt)} · 조회 {post.views}
+        </p>
         {user?.id === post.authorId && (
           <button
             type="button"
             onClick={onDelete}
-            className="shrink-0 rounded-full border border-red-200 px-3 py-1 text-xs text-red-500 hover:bg-red-50 dark:border-red-400/30 dark:hover:bg-red-500/10"
+            className="ml-auto shrink-0 rounded-full border border-red-200 px-3 py-1 text-xs text-red-500 hover:bg-red-50 dark:border-red-400/30 dark:hover:bg-red-500/10"
           >
             삭제
           </button>
         )}
       </div>
-      <p className="mt-1 border-b border-orange-100 pb-3 text-xs opacity-60 dark:border-white/10">
-        {post.author} · {fmt(post.createdAt)} · 조회 {post.views}
-      </p>
 
       {post.image && (
         // eslint-disable-next-line @next/next/no-img-element
