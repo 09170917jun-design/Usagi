@@ -64,27 +64,35 @@ type PostRow = {
   profiles: { nickname: string } | null;
 };
 
+const POST_COLUMNS = "id, board, title, content, image, author_id, views, created_at, profiles(nickname)";
+
+const toPost = (r: PostRow): Post => ({
+  id: r.id,
+  board: r.board,
+  title: r.title,
+  content: r.content,
+  author: r.profiles?.nickname ?? "알 수 없음",
+  authorId: r.author_id,
+  image: r.image ?? undefined,
+  views: r.views,
+  createdAt: Date.parse(r.created_at),
+});
+
 export async function refreshPosts() {
   const { data, error } = await supabase
     .from("posts")
-    .select("id, board, title, content, image, author_id, views, created_at, profiles(nickname)")
+    .select(POST_COLUMNS)
     .order("created_at", { ascending: false })
     .limit(500)
     .returns<PostRow[]>();
   if (error || !data) return;
-  postStore.set(
-    data.map((r) => ({
-      id: r.id,
-      board: r.board,
-      title: r.title,
-      content: r.content,
-      author: r.profiles?.nickname ?? "알 수 없음",
-      authorId: r.author_id,
-      image: r.image ?? undefined,
-      views: r.views,
-      createdAt: Date.parse(r.created_at),
-    })),
-  );
+  postStore.set(data.map(toPost));
+}
+
+/** 글 한 건 조회. 없으면 null */
+export async function fetchPost(id: string): Promise<Post | null> {
+  const { data } = await supabase.from("posts").select(POST_COLUMNS).eq("id", id).maybeSingle<PostRow>();
+  return data ? toPost(data) : null;
 }
 
 export function usePosts(): Post[] {

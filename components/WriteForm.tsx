@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { getBoard } from "@/lib/boards";
 import { addPost, useAuthLoading, useUser } from "@/lib/store";
 
 const MAX_IMAGE = 5 * 1024 * 1024;
+const ACCEPT = ["image/jpeg", "image/png", "image/webp", "image/gif"]; // gallery 버킷 허용 형식과 동일
 
 export default function WriteForm({ slug }: { slug: string }) {
   const board = getBoard(slug)!;
@@ -17,6 +18,8 @@ export default function WriteForm({ slug }: { slug: string }) {
   const [file, setFile] = useState<File>();
   const [preview, setPreview] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   if (loading) return null;
   if (!user || (board.adminOnly && !user.admin)) {
@@ -28,6 +31,10 @@ export default function WriteForm({ slug }: { slug: string }) {
   }
 
   const onFile = (f?: File) => {
+    if (f && !ACCEPT.includes(f.type)) {
+      alert("JPG, PNG, WEBP, GIF 이미지만 올릴 수 있어요.");
+      return;
+    }
     if (f && f.size > MAX_IMAGE) {
       alert("이미지는 5MB 이하만 올릴 수 있어요.");
       return;
@@ -68,14 +75,48 @@ export default function WriteForm({ slug }: { slug: string }) {
         className={field}
       />
       {board.gallery && (
-        <div className="space-y-2 text-sm">
-          <input type="file" accept="image/*" onChange={(e) => onFile(e.target.files?.[0])} />
-          {preview && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="미리보기" className="max-h-48 rounded-2xl" />
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            onFile(e.dataTransfer.files?.[0]);
+          }}
+          className={`flex min-h-40 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center text-sm ${
+            dragging ? "border-orange-400 bg-orange-50 dark:bg-white/10" : "border-orange-200 dark:border-white/20"
+          }`}
+        >
+          {preview ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={preview} alt="미리보기" className="max-h-56 rounded-2xl" />
+              <button type="button" onClick={() => onFile(undefined)} className="text-xs text-red-500 hover:underline">
+                사진 제거
+              </button>
+            </>
+          ) : (
+            <p className="opacity-60">
+              여기로 사진을 끌어다 놓거나
+              <br />
+              아래 <b>사진 추가하기</b> 버튼으로 컴퓨터에서 골라 주세요. (5MB 이하)
+            </p>
           )}
         </div>
       )}
+      <input
+        ref={fileRef}
+        type="file"
+        accept={ACCEPT.join(",")}
+        onChange={(e) => {
+          onFile(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+        hidden
+      />
       <div className="flex justify-end gap-2 text-sm">
         <button
           type="button"
@@ -84,6 +125,15 @@ export default function WriteForm({ slug }: { slug: string }) {
         >
           취소
         </button>
+        {board.gallery && (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="rounded-full border border-orange-300 px-5 py-2 text-orange-600 hover:bg-orange-50 dark:hover:bg-white/10"
+          >
+            사진 추가하기
+          </button>
+        )}
         <button
           type="submit"
           disabled={busy}

@@ -15,8 +15,8 @@ export default function SiteShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col text-[#4a3b32] dark:text-[#f6e9dc]">
       <header className="border-b-2 border-dashed border-orange-200 bg-white/70 backdrop-blur dark:border-orange-900 dark:bg-black/20">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2 font-logo text-4xl tracking-tight text-sky-500">
-            <span aria-hidden>🐾</span>치이카와
+          <Link href="/" className="font-logo text-4xl tracking-tight text-sky-500">
+            치이카와
           </Link>
           <nav className="hidden gap-6 text-sm sm:flex">
             <Link href="/">홈</Link>

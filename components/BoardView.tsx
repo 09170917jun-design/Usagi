@@ -1,10 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { getBoard } from "@/lib/boards";
-import Comments from "@/components/Comments";
-import { deletePost, usePosts, useUser, viewPost, type Post } from "@/lib/store";
+import { deletePost, usePosts, useUser, type Post } from "@/lib/store";
 
 const fmt = (t: number) => new Date(t).toLocaleDateString("ko-KR");
 
@@ -14,7 +14,6 @@ export default function BoardView({ slug }: { slug: string }) {
   const user = useUser();
   const allPosts = usePosts();
   const [query, setQuery] = useState("");
-  const [openId, setOpenId] = useState<string | null>(null);
 
   const base =
     slug === "popular"
@@ -40,16 +39,10 @@ export default function BoardView({ slug }: { slug: string }) {
     router.push(`/board/${slug}/write`);
   };
 
-  const toggle = (id: string) => {
-    if (openId !== id) void viewPost(id);
-    setOpenId(openId === id ? null : id);
-  };
-
   const onDelete = async (p: Post) => {
     if (!confirm(`"${p.title}" 글을 삭제할까요?`)) return;
     const error = await deletePost(p);
-    if (error) return alert(error);
-    setOpenId(null);
+    if (error) alert(error);
   };
 
   const deleteBtn = (p: Post, className: string) =>
@@ -84,7 +77,7 @@ export default function BoardView({ slug }: { slug: string }) {
               key={p.id}
               className="relative overflow-hidden rounded-2xl border border-orange-100 dark:border-white/10"
             >
-              <button onClick={() => toggle(p.id)} className="block w-full text-left">
+              <Link href={`/board/${p.board}/${p.id}`} className="block w-full text-left">
                 {p.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={p.image} alt={p.title} className="aspect-square w-full object-cover" />
@@ -99,14 +92,8 @@ export default function BoardView({ slug }: { slug: string }) {
                     {p.author} · 조회 {p.views}
                   </p>
                 </div>
-              </button>
+              </Link>
               {deleteBtn(p, "absolute right-2 top-2 bg-white/90 dark:bg-black/60")}
-              {openId === p.id && (
-                <div className="px-3 pb-3 text-sm">
-                  <p className="whitespace-pre-wrap">{p.content}</p>
-                  <Comments postId={p.id} />
-                </div>
-              )}
             </li>
           ))}
         </ul>
@@ -115,21 +102,17 @@ export default function BoardView({ slug }: { slug: string }) {
           {posts.map((p) => (
             <li key={p.id} className="py-3 text-sm">
               <div className="flex items-center gap-3">
-                <button onClick={() => toggle(p.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <Link
+                  href={`/board/${p.board}/${p.id}`}
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                >
                   <span className="flex-1 truncate font-medium hover:underline">{p.title}</span>
                   <span className="hidden opacity-60 sm:inline">{p.author}</span>
                   <span className="opacity-40">{fmt(p.createdAt)}</span>
                   <span className="w-12 text-right opacity-40">{p.views}</span>
-                </button>
+                </Link>
                 {deleteBtn(p, "")}
               </div>
-              {openId === p.id && (
-                <div className="mt-3 rounded-2xl bg-orange-50 p-4 dark:bg-white/5">
-                  <p className="whitespace-pre-wrap">{p.content}</p>
-                  <hr className="my-3 border-orange-100 dark:border-white/10" />
-                  <Comments postId={p.id} />
-                </div>
-              )}
             </li>
           ))}
         </ul>
