@@ -57,7 +57,7 @@ export default function PostDetail({ slug, id }: { slug: string; id: string }) {
         <p className="text-xs opacity-60">
           {post.author} · {fmt(post.createdAt)} · 조회 {post.views}
         </p>
-        {user?.id === post.authorId && (
+        {user && (user.id === post.authorId || user.admin) && (
           <button
             type="button"
             onClick={onDelete}

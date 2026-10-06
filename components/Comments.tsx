@@ -58,7 +58,7 @@ export default function Comments({ postId }: { postId: string }) {
               <div className="flex items-center gap-2 text-xs opacity-60">
                 <span className="font-bold">{c.author}</span>
                 <span>{fmt(c.createdAt)}</span>
-                {user?.id === c.authorId && (
+                {user && (user.id === c.authorId || user.admin) && (
                   <button onClick={() => onDelete(c.id)} className="ml-auto text-red-500 hover:underline">
                     삭제
                   </button>

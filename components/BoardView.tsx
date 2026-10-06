@@ -45,8 +45,11 @@ export default function BoardView({ slug }: { slug: string }) {
     if (error) alert(error);
   };
 
+  // 본인 글이거나 관리자면 삭제 가능
+  const canDelete = (p: Post) => Boolean(user && (user.id === p.authorId || user.admin));
+
   const deleteBtn = (p: Post, className: string) =>
-    user?.id === p.authorId && (
+    canDelete(p) && (
       <button
         type="button"
         onClick={() => onDelete(p)}
@@ -86,7 +89,7 @@ export default function BoardView({ slug }: { slug: string }) {
                     🐾
                   </div>
                 )}
-                <div className={`p-3 text-sm ${user?.id === p.authorId ? "pr-16" : ""}`}>
+                <div className={`p-3 text-sm ${canDelete(p) ? "pr-16" : ""}`}>
                   <p className="truncate font-bold">{p.title}</p>
                   <p className="text-xs opacity-60">
                     {p.author} · 조회 {p.views}
