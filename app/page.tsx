@@ -1,69 +1,55 @@
-import Image from "next/image";
+"use client";
+
+import Link from "next/link";
+import { BOARDS } from "@/lib/boards";
+import { usePosts } from "@/lib/store";
 
 export default function Home() {
+  const posts = usePosts();
+  const latest = posts.slice(0, 6);
+  const popular = [...posts].sort((a, b) => b.views - a.views).slice(0, 5);
+  const boardName = (slug: string) => BOARDS.find((b) => b.slug === slug)?.name ?? "";
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="grid gap-6 lg:grid-cols-[1fr_240px]">
+      <section className="rounded-3xl bg-white p-5 shadow-sm dark:bg-white/5">
+        <h2 className="mb-3 font-logo text-xl text-orange-500">최신 글</h2>
+        {latest.length === 0 ? (
+          <p className="py-10 text-center text-sm opacity-50">아직 게시글이 없어요.</p>
+        ) : (
+          <ul className="divide-y divide-orange-100 dark:divide-white/10">
+            {latest.map((p) => (
+              <li key={p.id} className="flex items-center gap-3 py-3 text-sm">
+                <span className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-600 dark:bg-orange-900/50 dark:text-orange-200">
+                  {boardName(p.board)}
+                </span>
+                <Link href={`/board/${p.board}`} className="flex-1 truncate hover:underline">
+                  {p.title}
+                </Link>
+                <span className="hidden opacity-60 sm:inline">{p.author}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <aside className="h-fit rounded-3xl bg-white p-5 shadow-sm dark:bg-white/5">
+        <h2 className="mb-3 font-logo text-xl text-orange-500">인기 글</h2>
+        {popular.length === 0 ? (
+          <p className="py-4 text-center text-sm opacity-50">아직 순위가 없어요.</p>
+        ) : (
+          <ol className="space-y-2 text-sm">
+            {popular.map((p, i) => (
+              <li key={p.id} className="flex gap-2">
+                <span className="w-4 font-bold text-orange-500">{i + 1}</span>
+                <Link href={`/board/${p.board}`} className="truncate hover:underline">
+                  {p.title}
+                </Link>
+              </li>
+            ))}
+          </ol>
+        )}
+      </aside>
     </div>
   );
 }
