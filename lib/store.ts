@@ -11,8 +11,13 @@ export type Post = {
   authorId: string;
   image?: string;
   views: number;
+  ups: number;
   createdAt: number;
 };
+
+/** 인기글 점수: 조회수 + 추천 수 × 5 (추천 1개가 조회 5회만큼 반영됨) */
+export const POPULAR_UP_WEIGHT = 5;
+export const popularScore = (p: Pick<Post, "views" | "ups">) => p.views + p.ups * POPULAR_UP_WEIGHT;
 
 export type Comment = {
   id: string;
@@ -60,13 +65,14 @@ type PostRow = {
   image: string | null;
   author_id: string;
   views: number;
+  up_votes: number;
   created_at: string;
   profiles: { nickname: string } | null;
 };
 
 // profiles로 가는 경로가 여럿(작성자, 투표)이라 외래키를 직접 지정해야 모호하지 않음
 const POST_COLUMNS =
-  "id, board, title, content, image, author_id, views, created_at, profiles!posts_author_id_fkey(nickname)";
+  "id, board, title, content, image, author_id, views, up_votes, created_at, profiles!posts_author_id_fkey(nickname)";
 
 const toPost = (r: PostRow): Post => ({
   id: r.id,
@@ -77,6 +83,7 @@ const toPost = (r: PostRow): Post => ({
   authorId: r.author_id,
   image: r.image ?? undefined,
   views: r.views,
+  ups: r.up_votes,
   createdAt: Date.parse(r.created_at),
 });
 

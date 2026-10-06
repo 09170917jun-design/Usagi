@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { getBoard } from "@/lib/boards";
-import { deletePost, usePosts, useUser, type Post } from "@/lib/store";
+import { deletePost, popularScore, usePosts, useUser, type Post } from "@/lib/store";
 
 const fmt = (t: number) => new Date(t).toLocaleDateString("ko-KR");
 
@@ -17,7 +17,7 @@ export default function BoardView({ slug }: { slug: string }) {
 
   const base =
     slug === "popular"
-      ? [...allPosts].sort((a, b) => b.views - a.views)
+      ? [...allPosts].sort((a, b) => popularScore(b) - popularScore(a) || b.createdAt - a.createdAt)
       : allPosts.filter((p) => p.board === slug);
   const q = query.trim().toLowerCase();
   const posts = q
