@@ -143,6 +143,15 @@ export async function login(email: string, password: string): Promise<string | n
   return error ? "이메일 또는 비밀번호가 올바르지 않습니다." : null;
 }
 
+/** 카카오 OAuth 로그인 시작 (성공 시 카카오 페이지로 이동). 실패 시 오류 메시지 */
+export async function loginWithKakao(): Promise<string | null> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "kakao",
+    options: { redirectTo: window.location.origin },
+  });
+  return error ? error.message : null;
+}
+
 export async function logout() {
   await supabase.auth.signOut();
 }

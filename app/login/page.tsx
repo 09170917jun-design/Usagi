@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { supabaseConfigured } from "@/lib/supabase";
-import { login } from "@/lib/store";
+import { login, loginWithKakao } from "@/lib/store";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,7 +22,11 @@ export default function LoginPage() {
     done();
   };
 
-  const comingSoon = () => alert("소셜 로그인은 준비 중입니다.");
+  const onKakao = async () => {
+    if (!supabaseConfigured) return alert("Supabase 환경변수(.env.local)가 설정되지 않았습니다.");
+    const error = await loginWithKakao();
+    if (error) alert(error);
+  };
 
   const field =
     "w-full rounded-2xl border border-orange-200 bg-white px-4 py-2 text-sm outline-none focus:border-orange-400 dark:border-white/20 dark:bg-black/20";
@@ -54,7 +58,7 @@ export default function LoginPage() {
 
       <button
         type="button"
-        onClick={comingSoon}
+        onClick={onKakao}
         className={`${btn} bg-[#FEE500] text-[#191919] hover:brightness-95`}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
