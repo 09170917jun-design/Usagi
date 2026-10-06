@@ -64,7 +64,9 @@ type PostRow = {
   profiles: { nickname: string } | null;
 };
 
-const POST_COLUMNS = "id, board, title, content, image, author_id, views, created_at, profiles(nickname)";
+// profiles로 가는 경로가 여럿(작성자, 투표)이라 외래키를 직접 지정해야 모호하지 않음
+const POST_COLUMNS =
+  "id, board, title, content, image, author_id, views, created_at, profiles!posts_author_id_fkey(nickname)";
 
 const toPost = (r: PostRow): Post => ({
   id: r.id,
@@ -149,7 +151,7 @@ type CommentRow = {
 export async function fetchComments(postId: string): Promise<Comment[]> {
   const { data } = await supabase
     .from("comments")
-    .select("id, content, author_id, created_at, profiles(nickname)")
+    .select("id, content, author_id, created_at, profiles!comments_author_id_fkey(nickname)")
     .eq("post_id", postId)
     .order("created_at", { ascending: true })
     .returns<CommentRow[]>();
