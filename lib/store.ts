@@ -174,6 +174,27 @@ export async function deleteComment(id: string): Promise<string | null> {
   return data?.length ? null : "삭제 권한이 없거나 이미 삭제된 댓글입니다.";
 }
 
+// ---------- 추천 / 비추천 ----------
+export type Votes = { up: number; down: number; mine: 1 | -1 | null };
+
+export async function fetchVotes(postId: string, userId?: string): Promise<Votes> {
+  const { data } = await supabase.from("post_votes").select("user_id, value").eq("post_id", postId);
+  const rows = data ?? [];
+  const mine = rows.find((r) => r.user_id === userId)?.value ?? null;
+  return {
+    up: rows.filter((r) => r.value === 1).length,
+    down: rows.filter((r) => r.value === -1).length,
+    mine,
+  };
+}
+
+/** 회원당 글 하나에 1표 (DB 기본키로도 막음). 성공 시 null, 실패 시 오류 메시지 */
+export async function castVote(postId: string, value: 1 | -1): Promise<string | null> {
+  const { error } = await supabase.from("post_votes").insert({ post_id: postId, value });
+  if (!error) return null;
+  return error.code === "23505" ? "이미 투표한 글입니다." : error.message;
+}
+
 export async function viewPost(id: string) {
   await supabase.rpc("increment_views", { post_id: id });
   postStore.set(postStore.get().map((p) => (p.id === id ? { ...p, views: p.views + 1 } : p)));

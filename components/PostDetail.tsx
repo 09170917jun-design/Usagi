@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Comments from "@/components/Comments";
+import VoteButtons from "@/components/VoteButtons";
 import { getBoard } from "@/lib/boards";
 import { deletePost, fetchPost, useUser, viewPost, type Post } from "@/lib/store";
 
@@ -73,6 +74,8 @@ export default function PostDetail({ slug, id }: { slug: string; id: string }) {
         <img src={post.image} alt={post.title} className="mt-4 max-h-[32rem] w-full rounded-2xl object-contain" />
       )}
       <p className="mt-4 min-h-24 whitespace-pre-wrap break-words text-sm">{post.content}</p>
+
+      <VoteButtons postId={post.id} />
 
       <hr className="my-5 border-orange-100 dark:border-white/10" />
       <Comments postId={post.id} />
